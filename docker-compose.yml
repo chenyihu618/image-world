@@ -1,50 +1,47 @@
 ﻿services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18
+    container_name: postgres
     restart: unless-stopped
+    ports:
+      - "15432:5432"
     environment:
-      POSTGRES_DB: imageworld
-      POSTGRES_USER: imageworld
-      POSTGRES_PASSWORD: imageworld_secret
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /vol1/1000/docker/postgres:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U imageworld"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   minio:
     image: minio/minio
+    container_name: minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
-      - miniodata:/data
+      - /vol1/1000/docker/minio:/data
     ports:
       - "9000:9000"
       - "9001:9001"
 
   app:
     build: .
+    container_name: imageworld
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://imageworld:imageworld_secret@db:5432/imageworld
-      STORAGE_ENDPOINT: http://minio:9000
-      STORAGE_ACCESS_KEY: minioadmin
-      STORAGE_SECRET_KEY: minioadmin
-      STORAGE_BUCKET: imageworld-photos
-      STORAGE_PUBLIC_URL: http://飞牛IP:9000/imageworld-photos
-      JWT_SECRET: change-this-in-production
+    env_file:
+      - .env.production
     depends_on:
       db:
         condition: service_healthy
-
-volumes:
-  pgdata:
-  miniodata:
+    volumes:
+      - ./public/uploads:/app/public/uploads
