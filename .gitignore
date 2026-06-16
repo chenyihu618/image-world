@@ -1,0 +1,44 @@
+﻿# image-world - .gitignore
+
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# User generated data
+public/uploads/
+public/data/notes.json
+
+# Vercel
+.vercel
+
+# Auto-generated
+next-env.d.ts
+*.tsbuildinfo
+
+# Agent files
+.agents/
+AGENTS.md
+CLAUDE.md
