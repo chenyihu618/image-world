@@ -1,4 +1,4 @@
- 'use client';
+﻿ 'use client';
  
  import { useState, useEffect } from 'react';
  import { useRouter } from 'next/navigation';
@@ -15,7 +15,10 @@
    const [editSpot, setEditSpot] = useState<Spot | null>(null);
    const [form, setForm] = useState({ code: '', name: '', nameEn: '', description: '', culture: '', history: '', latitude: '', longitude: '', province: '', country: '', tags: '' });
    const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploading, setUploading] = useState(false);
    const [uploadTarget, setUploadTarget] = useState('');
  
    useEffect(() => {
@@ -25,7 +28,20 @@
      fetch('/api/spots', { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()).then(setSpots).catch(() => {}).finally(() => setLoading(false));
    }, []);
  
-   const handleUpload = async () => {
+   const handleSave = async () => {
+    setSaving(true); setSaveError(''); setSaveSuccess(false);
+    try {
+      const res = await fetch('/api/spots', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify(form) });
+      const data = await res.json();
+      if (!res.ok) { setSaveError(data.error || '保存失败'); return; }
+      setSaveSuccess(true); setShowNewForm(false); setEditSpot(null);
+      setForm({ code:'', name:'', nameEn:'', description:'', culture:'', history:'', latitude:'', longitude:'', province:'', country:'', tags:'' });
+      fetch('/api/spots', { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()).then(setSpots);
+    } catch(e: any) { setSaveError(e.message); } finally { setSaving(false); }
+  };
+
+
+  const handleUpload = async () => {
      if (!uploadFiles.length || !uploadTarget) return;
      setUploading(true);
      for (const file of uploadFiles) {
@@ -34,13 +50,13 @@
        await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
      }
      setUploadFiles([]); setUploading(false);
-     alert('上传完成！请刷新页面');
+     window.location.reload();
    };
  
    if (!token) return null;
  
    return (
-     <main className="min-h-screen bg-[#0a0e1a]">
+     <main className="min-h-screen bg-[#0a0e1a] overflow-y-auto">
        <Navbar title="管理后台" />
        <div className="max-w-6xl mx-auto px-4 pt-20 pb-12">
          <div className="flex items-center justify-between mb-8">
@@ -65,8 +81,10 @@
              <textarea placeholder="简介" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm resize-none" />
              <div className="flex gap-3">
                <button onClick={() => { setShowNewForm(false); setEditSpot(null); }} className="px-4 py-2 rounded-lg bg-white/10 text-white/60 text-sm">取消</button>
-               <button className="px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-white text-sm">保存（后续需连数据库）</button>
+               <button onClick={handleSave} disabled={saving} className="disabled:opacity-50 px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-white text-sm">{saving ? "保存中..." : "保存"}</button>
              </div>
+              {saveError && <p className="text-red-400 text-sm mt-2">{saveError}</p>}
+              {saveSuccess && <p className="text-green-400 text-sm mt-2">保存成功！</p>}
            </div>
          )}
  

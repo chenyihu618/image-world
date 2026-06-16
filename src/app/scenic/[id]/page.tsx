@@ -1,19 +1,13 @@
 ﻿import Navbar from "@/components/Navbar";
-import { getScenicSpot } from "@/lib/data";
 import { notFound } from "next/navigation";
 import ClientScenicPage from "./client";
+import { getScenicSpot } from "@/lib/db";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
+interface Props { params: Promise<{ id: string }>; }
 
 export default async function ScenicSpotPage({ params }: Props) {
   const { id } = await params;
-  const spot = getScenicSpot(id);
-
-  if (!spot) {
-    notFound();
-  }
-
+  const spot = await getScenicSpot(id);
+  if (!spot) { notFound(); }
   return <ClientScenicPage spot={spot} />;
 }

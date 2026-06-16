@@ -1,6 +1,8 @@
 ﻿import { Pool } from 'pg';
 import { getAllScenicSpots as getStaticSpots, getScenicSpot as getStaticSpot, getCountry as getStaticCountry, getProvince as getStaticProvince } from './data';
 import type { ScenicSpot, Country, Province } from './types';
+import fs from 'fs';
+import path from 'path';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL || '', max: 10 });
 
@@ -41,6 +43,13 @@ export async function getScenicSpots(): Promise<ScenicSpot[]> {
 }
 
 export async function getScenicSpot(code: string): Promise<ScenicSpot | null> {
+  const staticSpot = getStaticSpot(code);
+  if (!isConnected()) {
+    if (!staticSpot) return null;
+    const s = staticSpot;
+    try { const dir = path.join(process.cwd(), 'public', 'uploads', code); if (fs.existsSync(dir)) { const fsImages = fs.readdirSync(dir).filter((f: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort().map((f: string) => '/api/uploads/' + code + '/' + f); return { ...s, images: [...(s.images || []), ...fsImages], coordinates: s.coordinates, tags: s.tags, createdAt: s.createdAt }; } } catch {}
+    return s;
+  }
   if (!isConnected()) return getStaticSpot(code) || null;
   const r = await pool.query(`
     SELECT s.code as id, s.name, s.name_en, s.description, s.culture, s.history,
@@ -53,9 +62,11 @@ export async function getScenicSpot(code: string): Promise<ScenicSpot | null> {
   if (!r.rows[0]) return null;
   // Also get photos for this spot
   const photos = await pool.query('SELECT url FROM photos WHERE scenic_spot_id = (SELECT id FROM scenic_spots WHERE code = $1) ORDER BY display_order, created_at', [code]);
+  let images = photos.rows.map((p: any) => p.url);
+  try { const dir = path.join(process.cwd(), 'public', 'uploads', code); if (fs.existsSync(dir)) { const fsImages = fs.readdirSync(dir).filter((f:string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).sort().map((f:string) => '/api/uploads/' + code + '/' + f); images = [...new Set([...images, ...fsImages])]; } } catch {}
   return {
     ...r.rows[0], coordinates: { lat: r.rows[0].lat, lng: r.rows[0].lng },
-    images: photos.rows.map((p: any) => p.url),
+    images: images,
     tags: r.rows[0].tags || [],
     createdAt: r.rows[0].createdAt?.toISOString() || '',
   };
